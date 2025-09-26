@@ -2,46 +2,61 @@ pipeline {
     agent any
 
     environment {
-        DB_URL = "jdbc:postgresql://ep-square-glade-a5410wve-pooler.us-east-2.aws.neon.tech/project_db?sslmode=require&channel_binding=require"
-        FRONTEND_URL = "https://comfy-conkies-2fcdf3.netlify.app/"
+        DB_USERNAME   = credentials('DB_USERNAME')
+        DB_PASSWORD   = credentials('DB_PASSWORD')
+        DB_URL        = credentials('DB_URL')
+        FRONTEND_URL  = credentials('FRONTEND_URL')
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials-id' // tes credentials Jenkins pour Docker Hub
+        IMAGE_NAME    = 'moise25/monmicroservice'           // change avec ton nom d'image
+        IMAGE_TAG     = 'latest'
     }
 
     stages {
-        stage('Cloner le code') {
+        stage('Clone') {
             steps {
                 git branch: 'main', url: 'https://github.com/Dansoko22md/pipeline-java-microservice.git'
             }
         }
 
-        stage('Installer dépendances') {
+        stage('Install Dependencies') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '71e10545-28cf-4f86-a0a5-71b66481e706', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD')]) {
-                    sh 'mvn clean install -DskipTests'
-                }
+                sh 'mvn clean install -DskipTests'
             }
         }
 
         stage('Tests') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '71e10545-28cf-4f86-a0a5-71b66481e706', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD')]) {
-                    sh 'mvn test'
-                }
+                sh 'mvn test'
             }
         }
 
         stage('Build') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '71e10545-28cf-4f86-a0a5-71b66481e706', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD')]) {
-                    sh 'mvn package -DskipTests'
+                sh 'mvn package -DskipTests'
+            }
+        }
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    // Login Docker
+                    withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    }
+
+                    // Build l'image Docker
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+
+                    // Push l'image vers le registry
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
 
-        stage('Déploiement') {
+        stage('Deploy') {
             steps {
-                withCredentials([usernamePassword(credentialsId: '71e10545-28cf-4f86-a0a5-71b66481e706', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD')]) {
-                    sh 'java -jar target/*.jar'
-                }
+                echo "Déploiement en cours..."
+                // Ici tu peux ajouter le déploiement avec Docker run, Kubernetes, ou un autre outil
             }
         }
     }
