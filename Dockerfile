@@ -1,30 +1,29 @@
-# Étape 1 : Build avec Maven
+# Étape 1 : Build du projet avec Maven
 FROM maven:3.8.6-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
-# Copier uniquement pom.xml d'abord (cache pour les dépendances)
+# Copier uniquement le pom.xml pour utiliser le cache Maven
 COPY pom.xml .
 
 RUN mvn dependency:go-offline
 
-# Copier ensuite le code source
+# Copier ensuite le reste du projet
 COPY src ./src
 
-# Compiler le projet sans les tests
+# Compiler et packager (sans tests)
 RUN mvn clean package -DskipTests
 
-# Étape 2 : Image finale (plus légère)
+# Étape 2 : Image finale légère pour exécuter le jar
 FROM eclipse-temurin:17-jre-slim
 
 WORKDIR /app
 
-# Copier le jar depuis l'étape de build
-# Le * permet d'éviter de hardcoder le nom exact du jar
+# Copier le jar depuis l'étape build
 COPY --from=build /app/target/*.jar app.jar
 
-# Exposer le port
+# Exposer le port de l’application
 EXPOSE 8080
 
-# Commande de démarrage
+# Lancer l’application
 ENTRYPOINT ["java", "-jar", "app.jar"]
