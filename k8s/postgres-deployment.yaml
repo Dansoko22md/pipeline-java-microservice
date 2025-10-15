@@ -31,7 +31,7 @@ spec:
   storageClassName: manual
 
 ---
-# 3. Secret PostgreSQL
+# 3. Secret PostgreSQL - CREDENTIALS CORRECTS
 apiVersion: v1
 kind: Secret
 metadata:
@@ -39,8 +39,10 @@ metadata:
   namespace: devops
 type: Opaque
 data:
-  POSTGRES_PASSWORD: cm9vdA==      # root (base64)
-  POSTGRES_USER: cG9zdGdyZXM=      # postgres (base64)
+  # username: postgres (base64)
+  POSTGRES_USER: cG9zdGdyZXM=
+  # password: root (base64)
+  POSTGRES_PASSWORD: cm9vdA==
 
 ---
 # 4. Deployment PostgreSQL

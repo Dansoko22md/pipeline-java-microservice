@@ -94,24 +94,49 @@ pipeline {
                         kubectl get namespace ${K8S_NAMESPACE} || kubectl create namespace ${K8S_NAMESPACE}
                     """
 
-                    // Déployer PostgreSQL
+                    // Déployer PostgreSQL avec vérifications complètes
                     sh """
                         export KUBECONFIG=/var/lib/jenkins/.kube/config
                         echo "🗄️  Déploiement de PostgreSQL..."
 
-                        if kubectl get deployment postgres -n ${K8S_NAMESPACE} &> /dev/null; then
-                            echo "✅ PostgreSQL existe déjà"
-                        else
-                            echo "📝 Création de PostgreSQL..."
-                            kubectl apply -f postgres-deployment.yaml -n ${K8S_NAMESPACE}
-                        fi
+                        # Toujours appliquer le manifest pour s'assurer que tout est à jour
+                        echo "📝 Application du manifest PostgreSQL..."
+                        kubectl apply -f postgres-deployment.yaml -n ${K8S_NAMESPACE}
 
-                        echo "⏳ Attente que PostgreSQL soit prêt..."
-                        kubectl wait --for=condition=ready pod -l app=postgres -n ${K8S_NAMESPACE} --timeout=300s || {
-                            echo "⚠️  PostgreSQL prend du temps, vérification..."
-                            kubectl get pods -n ${K8S_NAMESPACE}
-                            kubectl describe pod -l app=postgres -n ${K8S_NAMESPACE}
+                        # Vérifier que le service existe
+                        echo "🔍 Vérification du service PostgreSQL..."
+                        kubectl get svc postgres-service -n ${K8S_NAMESPACE} || {
+                            echo "❌ Le service postgres-service n'existe pas!"
+                            kubectl get svc -n ${K8S_NAMESPACE}
+                            exit 1
                         }
+
+                        # Vérifier que le déploiement existe
+                        echo "🔍 Vérification du déploiement PostgreSQL..."
+                        kubectl get deployment postgres -n ${K8S_NAMESPACE} || {
+                            echo "❌ Le déploiement postgres n'existe pas!"
+                            kubectl get deployments -n ${K8S_NAMESPACE}
+                            exit 1
+                        }
+
+                        # Attendre que PostgreSQL soit prêt
+                        echo "⏳ Attente que PostgreSQL soit prêt (timeout 5 min)..."
+                        kubectl wait --for=condition=ready pod -l app=postgres -n ${K8S_NAMESPACE} --timeout=300s || {
+                            echo "⚠️  PostgreSQL n'est pas prêt après 5 minutes!"
+                            echo ""
+                            echo "📊 État des pods PostgreSQL:"
+                            kubectl get pods -l app=postgres -n ${K8S_NAMESPACE}
+                            echo ""
+                            echo "📋 Description du pod:"
+                            kubectl describe pod -l app=postgres -n ${K8S_NAMESPACE}
+                            echo ""
+                            echo "📜 Logs PostgreSQL:"
+                            kubectl logs -l app=postgres -n ${K8S_NAMESPACE} --tail=50 || echo "Pas de logs"
+                            exit 1
+                        }
+
+                        echo "✅ PostgreSQL est prêt et accessible"
+                        echo "🔗 Service DNS: postgres-service.${K8S_NAMESPACE}.svc.cluster.local"
                     """
 
                     // Déployer Spring Boot avec vérification améliorée
@@ -136,8 +161,14 @@ pipeline {
                             kubectl set image deployment/spring-deployment springboot=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                         fi
 
-                        echo "⏳ Attente du rollout..."
-                        kubectl rollout status deployment/spring-deployment -n ${K8S_NAMESPACE} --timeout=300s
+                        echo "⏳ Attente du rollout (timeout 10 minutes)..."
+                        kubectl rollout status deployment/spring-deployment -n ${K8S_NAMESPACE} --timeout=600s || {
+                            echo "⚠️  Timeout du rollout, diagnostic en cours..."
+                            kubectl get pods -n ${K8S_NAMESPACE}
+                            kubectl describe pod -l app=springboot -n ${K8S_NAMESPACE} | tail -50
+                            kubectl logs -l app=springboot -n ${K8S_NAMESPACE} --tail=50 || echo "Pas de logs disponibles"
+                            exit 1
+                        }
                     """
 
                     // Afficher l'état du déploiement
