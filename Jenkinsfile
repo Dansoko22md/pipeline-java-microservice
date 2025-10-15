@@ -101,7 +101,7 @@ pipeline {
 
                         # Toujours appliquer le manifest pour s'assurer que tout est à jour
                         echo "📝 Application du manifest PostgreSQL..."
-                        kubectl apply -f postgres-deployment.yaml -n ${K8S_NAMESPACE}
+                        kubectl apply -f k8s/postgres-deployment.yaml -n ${K8S_NAMESPACE}
 
                         # Vérifier que le service existe
                         echo "🔍 Vérification du service PostgreSQL..."
@@ -150,7 +150,7 @@ pipeline {
                             kubectl set image deployment/spring-deployment springboot=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                         else
                             echo "📝 Le deployment n'existe pas, création..."
-                            kubectl apply -f spring-deployment.yaml -n ${K8S_NAMESPACE}
+                            kubectl apply -f k8s/spring-deployment.yaml -n ${K8S_NAMESPACE}
 
                             # Attendre que le deployment soit créé
                             echo "⏳ Attente de la création du deployment..."
