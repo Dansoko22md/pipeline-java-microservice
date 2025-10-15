@@ -39,15 +39,15 @@ metadata:
   namespace: devops
 type: Opaque
 data:
-  POSTGRES_PASSWORD: cm9vdDEyMw==  # root123
-  POSTGRES_USER: cG9zdGdyZXM=      # postgres
+  POSTGRES_PASSWORD: cm9vdA==      # root (base64)
+  POSTGRES_USER: cG9zdGdyZXM=      # postgres (base64)
 
 ---
 # 4. Deployment PostgreSQL
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres-deployment
+  name: postgres
   namespace: devops
   labels:
     app: postgres

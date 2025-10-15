@@ -19,8 +19,8 @@ metadata:
   namespace: devops
 type: Opaque
 data:
-  DB_USERNAME: cG9zdGdyZXM=     # postgres en base64
-  DB_PASSWORD: cm9vdDEyMw==     # root123 en base64
+  DB_USERNAME: cG9zdGdyZXM=     # postgres (base64)
+  DB_PASSWORD: cm9vdA==          # root (base64)
 
 ---
 # 3. Deployment Spring Boot - Lance plusieurs Pods de l'app Spring Boot
