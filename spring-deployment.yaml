@@ -1,0 +1,137 @@
+---
+# 1. ConfigMap - Configuration de la base de données (URL non sensible)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: devops
+data:
+  DB_URL: "jdbc:postgresql://postgres-service:5432/microservicedb"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_JPA_SHOW_SQL: "true"
+
+---
+# 2. Secret - Stocke les credentials (sécurisé, encodé base64)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: spring-secret
+  namespace: devops
+type: Opaque
+data:
+  DB_USERNAME: cG9zdGdyZXM=     # postgres (base64)
+  DB_PASSWORD: cm9vdA==          # root (base64)
+
+---
+# 3. Deployment Spring Boot - Lance plusieurs Pods de l'app Spring Boot
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-deployment
+  namespace: devops
+  labels:
+    app: springboot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: springboot
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: springboot
+    spec:
+      containers:
+        - name: springboot
+          image: moise25/monmicroservice:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            # Configuration Base de données depuis ConfigMap
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: DB_URL
+            # Configuration JPA depuis ConfigMap
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+            - name: SPRING_JPA_SHOW_SQL
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_JPA_SHOW_SQL
+            # Credentials depuis Secret
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spring-secret
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spring-secret
+                  key: DB_PASSWORD
+            # Configuration additionnelle
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: "org.postgresql.Driver"
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+              value: "org.hibernate.dialect.PostgreSQLDialect"
+            - name: SERVER_PORT
+              value: "8080"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      restartPolicy: Always
+
+---
+# 4. Service Spring Boot (NodePort) - Permet d'accéder à l'app via http://<minikube-ip>:30080
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: devops
+  labels:
+    app: springboot
+spec:
+  type: NodePort
+  selector:
+    app: springboot
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
+      protocol: TCP
+  sessionAffinity: None

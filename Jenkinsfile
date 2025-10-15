@@ -114,19 +114,25 @@ pipeline {
                         }
                     """
 
-                    // Déployer Spring Boot
+                    // Déployer Spring Boot avec vérification améliorée
                     sh """
                         export KUBECONFIG=/var/lib/jenkins/.kube/config
                         echo "🚀 Déploiement de Spring Boot version ${IMAGE_TAG}..."
 
-                        if kubectl get deployment spring-deployment -n ${K8S_NAMESPACE} &> /dev/null; then
-                            echo "🔄 Mise à jour de l'image existante..."
+                        # Vérifier si le deployment existe (sans afficher l'erreur)
+                        if kubectl get deployment spring-deployment -n ${K8S_NAMESPACE} >/dev/null 2>&1; then
+                            echo "🔄 Le deployment existe, mise à jour de l'image..."
                             kubectl set image deployment/spring-deployment springboot=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                         else
-                            echo "📝 Création du deployment Spring Boot..."
+                            echo "📝 Le deployment n'existe pas, création..."
                             kubectl apply -f spring-deployment.yaml -n ${K8S_NAMESPACE}
-                            # Mettre à jour l'image après création
-                            sleep 5
+
+                            # Attendre que le deployment soit créé
+                            echo "⏳ Attente de la création du deployment..."
+                            sleep 10
+
+                            # Mettre à jour l'image avec la version spécifique
+                            echo "🔄 Mise à jour de l'image vers la version ${IMAGE_TAG}..."
                             kubectl set image deployment/spring-deployment springboot=${IMAGE_NAME}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
                         fi
 
