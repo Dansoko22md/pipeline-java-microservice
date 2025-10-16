@@ -25,7 +25,7 @@ public class ClientRestController {
     }
 
     // Méthode GET pour récupérer tous les clients
-    @GetMapping("/clients")
+    @GetMapping("/all")
     public List<Client> getAllClients() {
         return services.getAllClients();
     }
