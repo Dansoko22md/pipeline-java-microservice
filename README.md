@@ -152,4 +152,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## ✨ Authors
 
-* **Moussa Dansoko** - *Initial work*
+* **[Your Name]** - *Initial work*

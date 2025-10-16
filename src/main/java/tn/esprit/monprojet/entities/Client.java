@@ -22,8 +22,8 @@ public class Client implements Serializable {
     @Enumerated(EnumType.STRING)
     Genre genre;
     // address add the following attribute
-    String address;
+    String adresse;
     // phone add the following attribute
-    String phone;
+    String telephone;
 
 }
