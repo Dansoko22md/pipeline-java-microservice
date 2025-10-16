@@ -11,7 +11,7 @@ data:
   SPRING_JPA_SHOW_SQL: "true"
 
 ---
-# 2. Secret - Stocke les credentials (sécurisé, encodé base64)
+# 2. Secret - CREDENTIALS CORRECTS (identiques à postgres-secret)
 apiVersion: v1
 kind: Secret
 metadata:
@@ -19,8 +19,10 @@ metadata:
   namespace: devops
 type: Opaque
 data:
-  DB_USERNAME: cG9zdGdyZXM=     # postgres (base64)
-  DB_PASSWORD: cm9vdA==          # root (base64)
+  # username: postgres (base64)
+  DB_USERNAME: cG9zdGdyZXM=
+  # password: root (base64)
+  DB_PASSWORD: cm9vdA==
 
 ---
 # 3. Deployment Spring Boot - Lance plusieurs Pods de l'app Spring Boot
@@ -98,18 +100,16 @@ spec:
               memory: "1Gi"
               cpu: "1000m"
           livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
+            tcpSocket:
               port: 8080
-            initialDelaySeconds: 60
+            initialDelaySeconds: 90
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /actuator/health/readiness
+            tcpSocket:
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
