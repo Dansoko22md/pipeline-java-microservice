@@ -1,22 +1,5 @@
 ---
-# 1. PersistentVolume (PV)
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: postgres-pv
-spec:
-  capacity:
-    storage: 5Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
-  hostPath:
-    path: /mnt/data/postgres
-    type: DirectoryOrCreate
-
----
-# 2. PersistentVolumeClaim (PVC)
+# 1. PersistentVolumeClaim (PVC) - Utilise le StorageClass par défaut de Minikube
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -28,10 +11,10 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: manual
+  # Ne pas spécifier storageClassName pour utiliser le défaut de Minikube
 
 ---
-# 3. Secret PostgreSQL - CREDENTIALS CORRECTS
+# 2. Secret PostgreSQL - CREDENTIALS CORRECTS
 apiVersion: v1
 kind: Secret
 metadata:
@@ -45,7 +28,7 @@ data:
   POSTGRES_PASSWORD: cm9vdA==
 
 ---
-# 4. Deployment PostgreSQL
+# 3. Deployment PostgreSQL
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -121,7 +104,7 @@ spec:
             claimName: postgres-pvc
 
 ---
-# 5. Service PostgreSQL
+# 4. Service PostgreSQL
 apiVersion: v1
 kind: Service
 metadata:
