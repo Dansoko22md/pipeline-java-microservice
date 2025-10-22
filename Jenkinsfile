@@ -3,11 +3,15 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = 'dockerhub-credentials-id'
+        SONAR_TOKEN = credentials('sonar_token') // À créer dans Jenkins
         IMAGE_NAME    = 'moise25/monmicroservice'
         IMAGE_TAG     = "${env.BUILD_NUMBER}"
         K8S_NAMESPACE = 'devops'
-        // Définir KUBECONFIG pour Jenkins
         KUBECONFIG = '/var/lib/jenkins/.kube/config'
+
+        // Configuration SonarQube
+        SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_PROJECT_KEY = 'monprojet'
     }
 
     stages {
@@ -24,23 +28,100 @@ pipeline {
             }
         }
 
-        stage('Build avec Maven') {
+stage('Build avec Maven') {
+    steps {
+        echo "========================================="
+        echo "STAGE 2 : Build du projet avec Maven"
+        echo "========================================="
+
+        script {
+            // Option 1 : Spécifier la classe principale via propriété système
+            sh '''
+                mvn clean install -DskipTests \
+                    -Dspring-boot.run.main-class=tn.esprit.devops.RevisionApplication
+            '''
+
+            sh '''
+                mvn package -DskipTests \
+                    -Dspring-boot.run.main-class=tn.esprit.devops.RevisionApplication
+            '''
+        }
+
+        echo "✅ Build Maven terminé avec succès"
+    }
+}
+
+        stage('Tests Unitaires') {
             steps {
                 echo "========================================="
-                echo "STAGE 2 : Build du projet avec Maven"
+                echo "STAGE 2.5 : Exécution des tests unitaires"
                 echo "========================================="
 
-                sh 'mvn clean install -DskipTests'
-                sh 'mvn package -DskipTests'
+                sh 'mvn test'
 
-                echo "✅ Build Maven terminé avec succès"
+                // Publier les résultats des tests
+                junit '**/target/surefire-reports/*.xml'
+
+                echo "✅ Tests unitaires terminés"
+            }
+        }
+
+        stage('Analyse SonarQube') {
+            steps {
+                echo "========================================="
+                echo "STAGE 3 : Analyse de qualité du code avec SonarQube"
+                echo "========================================="
+
+                script {
+                    sh """
+                        echo "🔍 Lancement de l'analyse SonarQube..."
+
+                        mvn sonar:sonar \\
+                            -Dsonar.host.url=${SONAR_HOST_URL} \\
+                            -Dsonar.login=${SONAR_TOKEN} \\
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
+                            -Dsonar.projectName='Mon Microservice Pipeline' \\
+                            -Dsonar.projectVersion=${IMAGE_TAG} \\
+                            -Dsonar.sources=src/main/java \\
+                            -Dsonar.tests=src/test/java \\
+                            -Dsonar.java.binaries=target/classes \\
+                            -Dsonar.junit.reportPaths=target/surefire-reports \\
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \\
+                            -Dsonar.java.coveragePlugin=jacoco
+
+                        echo "✅ Analyse SonarQube terminée avec succès"
+                        echo "📊 Consultez les résultats : ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                    """
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo "========================================="
+                echo "STAGE 3.5 : Vérification du Quality Gate SonarQube"
+                echo "========================================="
+
+                script {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            echo "⚠️  Quality Gate échoué : ${qg.status}"
+                            echo "🔍 Vérifiez les résultats : ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+                            // Ne pas bloquer le pipeline, juste avertir
+                            // error "Pipeline interrompu à cause du Quality Gate"
+                        } else {
+                            echo "✅ Quality Gate réussi !"
+                        }
+                    }
+                }
             }
         }
 
         stage('Build & Push Docker Image') {
             steps {
                 echo "========================================="
-                echo "STAGE 3 : Build et Push de l'image Docker"
+                echo "STAGE 4 : Build et Push de l'image Docker"
                 echo "========================================="
 
                 script {
@@ -74,7 +155,7 @@ pipeline {
         stage('Déployer sur Cluster Kubernetes') {
             steps {
                 echo "========================================="
-                echo "STAGE 4 : Déploiement sur Kubernetes"
+                echo "STAGE 5 : Déploiement sur Kubernetes"
                 echo "========================================="
 
                 script {
@@ -229,11 +310,13 @@ pipeline {
             echo "========================================="
             echo ""
             echo "🎉 Version ${IMAGE_TAG} déployée sur Kubernetes"
+            echo "📊 Analyse SonarQube : ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
             echo ""
             echo "📌 Prochaines étapes :"
             echo "   1. Vérifier : kubectl get pods -n ${K8S_NAMESPACE}"
             echo "   2. Logs : kubectl logs -l app=springboot -n ${K8S_NAMESPACE}"
             echo "   3. Accès : minikube service spring-service -n ${K8S_NAMESPACE}"
+            echo "   4. SonarQube : ${SONAR_HOST_URL}"
             echo ""
 
             script {
