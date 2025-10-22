@@ -27,7 +27,7 @@ This project is a Java Spring Boot microservice with complete DevOps pipeline im
 ├── src/
 │   ├── main/
 │   │   ├── java/
-│   │   │   └── tn/esprit/project/
+│   │   │   └── tn/esprit/devops/
 │   │   │       ├── controllers/
 │   │   │       ├── entities/
 │   │   │       ├── repositories/
@@ -152,4 +152,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## ✨ Authors
 
-* **[Your Name]** - *Initial work*
+* **Moussa Dansoko** - *Initial work*

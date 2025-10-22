@@ -12,10 +12,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
-    <groupId>tn.esprit.examen</groupId>
-    <artifactId>monprojet</artifactId>
+    <groupId>tn.esprit.devops</groupId>
+    <artifactId>devops</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>monprojet</name>
+    <name>devops</name>
     <description>Spring Boot backend project</description>
 
     <properties>
