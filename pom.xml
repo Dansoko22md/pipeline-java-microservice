@@ -85,6 +85,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>tn.esprit.devops.RevisionApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
